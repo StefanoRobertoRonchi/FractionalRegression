@@ -5,7 +5,7 @@ from scipy import sparse
 class FracRegressionEstimation:
     def __init__(self, model):
         self.model = model
-        Beta = 
+
 
 
     def fit(self, X, y):
