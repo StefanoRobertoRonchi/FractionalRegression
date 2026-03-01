@@ -12,10 +12,10 @@ class FracRegressionEstimation:
         # Define Backtracking line search function
         def backtracking_line_search(logl, X, y, Beta_prev, D, g,
                                 alpha0=1.0, rho=0.5, c=1e-4, min_alpha=1e-8):
-            direction = D @ g                          # descent direction
+            direction = D @ g                          # ascend direction
             grad_dot_dir = float(g.T @ direction)        # directional derivative (scalar)
             if grad_dot_dir <= 0:
-                return 0.0                               # not a descent direction
+                return 0.0                               # not a ascend direction
             alpha = alpha0
             f0 = float(logl(X, y, Beta_prev))
             while alpha > min_alpha:
@@ -29,17 +29,17 @@ class FracRegressionEstimation:
         # ======= Step 0 - Defiinition of Log Likelihood function =======
         X = sparse.csr_matrix(np.asmatrix(X))    
         y = np.asarray(y)
-        lambda logl(X,y,*args): np.sum(y * (X @ Beta) - np.logaddexp(0,X @ Beta))
-        lambda l_grad(X,y,*args): X.T @ (y - 1/(1+np.exp(-X @ Beta))) # Convex Function
+        lambda logl(X,y,Beta): np.sum(y * (X @ Beta) - np.logaddexp(0,X @ Beta))
+        lambda l_grad(X,y,Beta): X.T @ (y - 1/(1+np.exp(-X @ Beta))) # Convex Function
         tol = 1e-5
         max_iter = 1000
         # Starting values for the optimization
         D_prev = np.eye(X.shape[1]) # Identity matrix as initial Hessian approximation
-        Beta = np.zeros(X.shape[1]).reshape(-1,1) 
+        Beta_prev = np.zeros(X.shape[1]).reshape(-1,1) 
         g_prev = l_grad(X,y,Beta).reshape(-1,1)
         # ======= Step 1 - Estimation of the parameters using BFGS optimization =======
         it = 0
-        while np.sqrt(g_prev.T @ g_prev) > tol or it < max_iter:
+        while np.sqrt(g_prev.T @ g_prev) > tol and it < max_iter:
             # compute a proposal for Beta using the BFGS update
             ## find the optimal step size alpha using line search (e.g. backtracking line search)
             # ======= Step 1.1 - Estimation of the step length alpha =======
@@ -70,14 +70,17 @@ class FracRegressionEstimation:
             D_prev = D.copy()
             it+=1
 
-
-        
-            
-
-
-
-
-
+            # storing final parameters 
+            self.Beta = Beta.copy()
+            self.D = D.copy()
+            # ======= Step 1.3 - Compute Standard Errors =======
+            # Compute the standard errors under robust sandwich estimator formula
+            # Define the scores #
+            u = y - 1/(1+np.exp(-X @ Beta)) # scores
+            U =  np.diag(u*u)
+            # Compute the robust sandwich estimator for standard errors
+            self.VarBeta = self.D @ (X.T @ U @ X) @ self.D
+            self.SEBeta = np.sqrt(np.diag(self.VarBeta)).reshape(-1,1)
 
         pass
 
