@@ -1,10 +1,13 @@
 
+
 import numpy as np
+import pandas as pd
 from scipy import sparse
 
 class FracRegressionEstimation:
-    def __init__(self, model):
+    def __init__(self, model, parameters):
         self.model = model
+        self.parameters = None
 
 
 
@@ -27,7 +30,18 @@ class FracRegressionEstimation:
             return alpha
         # Implement the fitting procedure for fractional regression
         # ======= Step 0 - Defiinition of Log Likelihood function =======
-        X = sparse.csr_matrix(np.asmatrix(X))    
+        if isinstance(X, pd.DataFrame):
+            features = X.columns.tolist()
+            X = sparse.csr_matrix(np.asmatrix(X))  
+        elif isinstance(X, np.ndarray):
+            features = [f'X{i}' for i in range(X.shape[1])]
+            X = sparse.csr_matrix(np.asmatrix(X))    
+        elif sparse.issparse(X):
+            features = [f'X{i}' for i in range(X.shape[1])]
+            X = sparse.csr_matrix(np.asmatrix(X))    
+        else:      
+            raise ValueError("Unsupported data type for X. " \
+                "               Please provide a pandas DataFrame or a numpy array.")
         y = np.asarray(y).reshape(-1, 1)
         logl = lambda X,y,Beta: np.sum(y * (X @ Beta) - np.logaddexp(0,X @ Beta))
         l_grad = lambda X,y,Beta: X.T @ (y - 1/(1+np.exp(-X @ Beta))) # Convex Function
@@ -71,19 +85,23 @@ class FracRegressionEstimation:
             it+=1
 
         # storing final parameters 
-        self.Beta = Beta.copy()
-        self.D = D.copy()
+        self.parameters.Beta = Beta.copy()
+        self.parameters.D = D.copy()
         # ======= Step 1.3 - Compute Standard Errors =======
         # Compute the standard errors under robust sandwich estimator formula
         # Define the scores #
         u = y - 1/(1+np.exp(-X @ Beta)) # scores
         U =  X.T @ X.multiply(u**2)
         # Compute the robust sandwich estimator for standard errors
-        self.VarBeta = self.D @ (X.T @ U @ X) @ self.D
-        self.SEBeta = np.sqrt(np.diag(self.VarBeta)).reshape(-1,1)
+        self.parameters.VarBeta = pd.Series(self.parameters.D @ (X.T @ U @ X) @ self.parameters.D
+        , index = features)
+        self.parameters.SEBeta = pd.Series(
+            np.sqrt(np.diag(self.parameters.VarBeta)).reshape(-1,1)
+            , index = features)
 
         pass
 
     def predict(self, X):
         # Implement the prediction procedure for fractional regression
+
         pass
