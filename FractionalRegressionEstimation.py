@@ -3,11 +3,12 @@
 import numpy as np
 import pandas as pd
 from scipy import sparse
+from types import SimpleNamespace
 
 class FracRegressionEstimation:
-    def __init__(self, model, parameters):
+    def __init__(self, model = None, parameters = None):
         self.model = model
-        self.parameters = None
+        self.parameters = parameters if parameters is not None else SimpleNamespace()
 
 
 
@@ -93,12 +94,10 @@ class FracRegressionEstimation:
         u = y - 1/(1+np.exp(-X @ Beta)) # scores
         U =  X.T @ X.multiply(u**2)
         # Compute the robust sandwich estimator for standard errors
-        self.parameters.VarBeta = pd.Series(self.parameters.D @ (X.T @ U @ X) @ self.parameters.D
+        self.parameters.VarBeta = pd.DataFrame(self.parameters.D @ U @ self.parameters.D
         , index = features)
         self.parameters.SEBeta = pd.Series(
-            np.sqrt(np.diag(self.parameters.VarBeta)).reshape(-1,1)
-            , index = features)
-
+            np.sqrt(np.diag(self.parameters.VarBeta.values)), index = features)
         pass
 
     def predict(self, X):
