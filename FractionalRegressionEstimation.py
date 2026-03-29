@@ -86,7 +86,7 @@ class FracRegressionEstimation:
             it+=1
 
         # storing final parameters 
-        self.parameters.Beta = Beta.copy()
+        self.parameters.Beta = pd.Series(Beta.copy().flatten(), index = features)
         self.parameters.D = D.copy()
         # ======= Step 1.3 - Compute Standard Errors =======
         # Compute the standard errors under robust sandwich estimator formula
@@ -98,9 +98,16 @@ class FracRegressionEstimation:
         , index = features)
         self.parameters.SEBeta = pd.Series(
             np.sqrt(np.diag(self.parameters.VarBeta.values)), index = features)
-        pass
+      
 
     def predict(self, X):
         # Implement the prediction procedure for fractional regression
+        if self.parameters.Beta is None:
+            raise ValueError("Model is not fitted yet.")
+        else if isinstance(X, pd.DataFrame):
+            try:
+                y = 1 / (1 + np.exp(-X.loc[:, self.parameters.Beta.index].values @ self.parameters.Beta.values.reshape(-1,1)))
+            except KeyError:
+                raise ValueError("The input DataFrame must contain the same features as the training data.")
 
-        pass
+    
