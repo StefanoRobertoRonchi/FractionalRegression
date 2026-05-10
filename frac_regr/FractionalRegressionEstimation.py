@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-# from scipy import sparse
+from scipy import sparse
 from types import SimpleNamespace
 
 class FracRegressionEstimation:
@@ -12,6 +12,7 @@ class FracRegressionEstimation:
         self.curv_matrix_ = None
         self.n_iter_ = 0
 
+    @staticmethod
     def data_prep(X):
         if isinstance(X, pd.DataFrame):
             features = X.columns.tolist()
@@ -25,7 +26,7 @@ class FracRegressionEstimation:
         else:      
             raise ValueError("Unsupported data type for X. " \
                 "               Please provide a pandas DataFrame or a numpy array.")
-        return X
+        return X, features
 
     def fit(self, X, y, regularization=None, lambda_=0.1, add_intercept = True):
         # Define Backtracking line search function
@@ -46,7 +47,7 @@ class FracRegressionEstimation:
             return alpha
         # Implement the fitting procedure for fractional regression
         # ======= Step 0 - Defiinition of Log Likelihood function =======
-        X = data_prep(X)
+        X, features = self.data_prep(X)
 
         # add intercept if True
         if  add_intercept:
