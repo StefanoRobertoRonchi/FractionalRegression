@@ -1,18 +1,33 @@
-
-
 import numpy as np
 import pandas as pd
-from scipy import sparse
+# from scipy import sparse
 from types import SimpleNamespace
 
 class FracRegressionEstimation:
-    def __init__(self, model = None, parameters = None):
-        self.model = model
-        self.parameters = parameters if parameters is not None else SimpleNamespace()
+    def __init__(self):
+        self.beta_ = None
+        self.se_ = None
+        self.var_ = None
+        self.feature_names_ = None
+        self.curv_matrix_ = None
+        self.n_iter_ = 0
 
+    def data_prep(X):
+        if isinstance(X, pd.DataFrame):
+            features = X.columns.tolist()
+            X = sparse.csr_matrix(np.asmatrix(X))  
+        elif isinstance(X, np.ndarray):
+            features = [f'X{i}' for i in range(X.shape[1])]
+            X = sparse.csr_matrix(np.asmatrix(X))    
+        elif sparse.issparse(X):
+            features = [f'X{i}' for i in range(X.shape[1])]
+            X = X.tocsr() 
+        else:      
+            raise ValueError("Unsupported data type for X. " \
+                "               Please provide a pandas DataFrame or a numpy array.")
+        return X
 
-
-    def fit(self, X, y):
+    def fit(self, X, y, regularization=None, lambda_=0.1, add_intercept = True):
         # Define Backtracking line search function
         def backtracking_line_search(logl, X, y, Beta_prev, D, g,
                                 alpha0=1.0, rho=0.5, c=1e-4, min_alpha=1e-8):
@@ -31,21 +46,21 @@ class FracRegressionEstimation:
             return alpha
         # Implement the fitting procedure for fractional regression
         # ======= Step 0 - Defiinition of Log Likelihood function =======
-        if isinstance(X, pd.DataFrame):
-            features = X.columns.tolist()
-            X = sparse.csr_matrix(np.asmatrix(X))  
-        elif isinstance(X, np.ndarray):
-            features = [f'X{i}' for i in range(X.shape[1])]
-            X = sparse.csr_matrix(np.asmatrix(X))    
-        elif sparse.issparse(X):
-            features = [f'X{i}' for i in range(X.shape[1])]
-            X = sparse.csr_matrix(np.asmatrix(X))    
-        else:      
-            raise ValueError("Unsupported data type for X. " \
-                "               Please provide a pandas DataFrame or a numpy array.")
+        X = data_prep(X)
+
+        # add intercept if True
+        if  add_intercept:
+           intercept = sparse.csr_matrix(np.ones((X.shape[0],1)))
+           X = sparse.hstack([intercept, X]).tocsr()
+           features = ["Intercept"] + features 
+           
         y = np.asarray(y).reshape(-1, 1)
-        logl = lambda X,y,Beta: np.sum(y * (X @ Beta) - np.logaddexp(0,X @ Beta))
-        l_grad = lambda X,y,Beta: X.T @ (y - 1/(1+np.exp(-X @ Beta))) # Convex Function
+        if regularization is None:
+            logl = lambda X,y,Beta: np.sum(y * (X @ Beta) - np.logaddexp(0,X @ Beta))
+            l_grad = lambda X,y,Beta: X.T @ (y - 1/(1+np.exp(-X @ Beta))) # Convex Function
+        elif regularization == 'L2':
+            logl = lambda X,y,Beta: np.sum(y * (X @ Beta) - np.logaddexp(0,X @ Beta)) - lambda_ * np.sum(Beta**2)
+            l_grad = lambda X,y,Beta: X.T @ (y - 1/(1+np.exp(-X @ Beta))) - 2 * lambda_ * Beta # Convex Function
         tol = 1e-5
         max_iter = 1000
         # Starting values for the optimization
@@ -66,7 +81,7 @@ class FracRegressionEstimation:
             # Compute the associated gradient and update the Hessian approximation using the BFGS formula
             g = l_grad(X,y,Beta).reshape(-1,1)
             s = Beta - Beta_prev
-            yk = g - g_prev
+            yk = - (g - g_prev)
 
             ys = float(yk.T @ s)          # y^T s
             if ys <= 1e-12:
@@ -86,27 +101,29 @@ class FracRegressionEstimation:
             it+=1
 
         # storing final parameters 
-        self.parameters.Beta = pd.Series(Beta.copy().flatten(), index = features)
-        self.parameters.D = D.copy()
+        self.beta_ = pd.Series(Beta.copy().flatten(), index = features)
+        self.curv_matrix_ = D.copy()
+        self.n_iter_ = it
+        self.feature_names_ = features
         # ======= Step 1.3 - Compute Standard Errors =======
         # Compute the standard errors under robust sandwich estimator formula
         # Define the scores #
         u = y - 1/(1+np.exp(-X @ Beta)) # scores
         U =  X.T @ X.multiply(u**2)
         # Compute the robust sandwich estimator for standard errors
-        self.parameters.VarBeta = pd.DataFrame(self.parameters.D @ U @ self.parameters.D
+        self.var_ = pd.DataFrame(self.curv_matrix_ @ U @ self.curv_matrix_
         , index = features)
-        self.parameters.SEBeta = pd.Series(
-            np.sqrt(np.diag(self.parameters.VarBeta.values)), index = features)
-      
+        self.se_  = pd.Series(
+            np.sqrt(np.diag(self.var_.values)), index = features)
+        return self
 
     def predict(self, X):
         # Implement the prediction procedure for fractional regression
-        if self.parameters.Beta is None:
+        if self.beta_ is None:
             raise ValueError("Model is not fitted yet.")
-        else if isinstance(X, pd.DataFrame):
+        elif isinstance(X, pd.DataFrame):
             try:
-                y = 1 / (1 + np.exp(-X.loc[:, self.parameters.Beta.index].values @ self.parameters.Beta.values.reshape(-1,1)))
+                y = 1 / (1 + np.exp(-X.loc[:, self.beta_.index].values @ self.beta_.values.reshape(-1,1)))
             except KeyError:
                 raise ValueError("The input DataFrame must contain the same features as the training data.")
 
