@@ -4,6 +4,7 @@ from scipy import sparse
 from types import SimpleNamespace
 
 class FracRegressionEstimation:
+    """ """
     def __init__(self):
         self.beta_ = None
         self.se_ = None
@@ -14,6 +15,17 @@ class FracRegressionEstimation:
 
     @staticmethod
     def data_prep(X):
+        """
+
+        Parameters
+        ----------
+        X :
+            
+
+        Returns
+        -------
+
+        """
         if isinstance(X, pd.DataFrame):
             features = X.columns.tolist()
             X = sparse.csr_matrix(np.asmatrix(X))  
@@ -29,9 +41,57 @@ class FracRegressionEstimation:
         return X, features
 
     def fit(self, X, y, regularization=None, lambda_=0.1, add_intercept = True):
+        """
+
+        Parameters
+        ----------
+        X :
+            
+        y :
+            
+        regularization :
+             (Default value = None)
+        lambda_ :
+             (Default value = 0.1)
+        add_intercept :
+             (Default value = True)
+
+        Returns
+        -------
+
+        """
         # Define Backtracking line search function
         def backtracking_line_search(logl, X, y, Beta_prev, D, g,
                                 alpha0=1.0, rho=0.5, c=1e-4, min_alpha=1e-8):
+            """
+
+            Parameters
+            ----------
+            logl :
+                
+            X :
+                
+            y :
+                
+            Beta_prev :
+                
+            D :
+                
+            g :
+                
+            alpha0 :
+                 (Default value = 1.0)
+            rho :
+                 (Default value = 0.5)
+            c :
+                 (Default value = 1e-4)
+            min_alpha :
+                 (Default value = 1e-8)
+
+            Returns
+            -------
+
+            """
             direction = D @ g                          # ascend direction
             grad_dot_dir = float(g.T @ direction)        # directional derivative (scalar)
             if grad_dot_dir <= 0:
@@ -119,6 +179,17 @@ class FracRegressionEstimation:
         return self
 
     def predict(self, X):
+        """
+
+        Parameters
+        ----------
+        X :
+            
+
+        Returns
+        -------
+
+        """
         # Implement the prediction procedure for fractional regression
         if self.beta_ is None:
             raise ValueError("Model is not fitted yet.")
