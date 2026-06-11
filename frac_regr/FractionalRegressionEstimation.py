@@ -4,7 +4,7 @@ from scipy import sparse
 from types import SimpleNamespace
 
 class FracRegressionEstimation:
-    """ """
+    """Logistic model object for continuous target variables"""
     def __init__(self):
         self.beta_ = None
         self.se_ = None

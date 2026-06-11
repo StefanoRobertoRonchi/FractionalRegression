@@ -1,2 +1,2 @@
 
-from .FractionalRegressionEstimation import FracRegressionEstimation
+from frac_regr import FractionalRegressionEstimation
