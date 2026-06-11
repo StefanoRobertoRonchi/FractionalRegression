@@ -1,0 +1,3 @@
+This folder contains a python implementation of the logit estimator of Fractional Regression. This methodology has been introduced by Jeffrey M. Wooldrige in 1993 _Econometric Methods for fractional respose variables with an application to 401(K) plan participation rates_ paper.
+
+The notebook contains a short test comparing the results with the Logit implementation provided by the statsmodels package confirming the correctness of the replicability of the estimator. Still it's possible to see that using the BFGS and backtracking line search introduce non negligibile bias in the estimates
