@@ -93,7 +93,7 @@ class FracRegressionEstimation:
 
             """
             direction = D @ g                          # ascend direction
-            grad_dot_dir = float(g.T @ direction)        # directional derivative (scalar)
+            grad_dot_dir = np.asarray(g.T @ direction).ravel()[0]    # directional derivative (scalar)
             if grad_dot_dir <= 0:
                 return 0.0                               # not a ascend direction
             alpha = alpha0
@@ -144,12 +144,12 @@ class FracRegressionEstimation:
             s = Beta - Beta_prev
             yk = - (g - g_prev)
 
-            ys = float(yk.T @ s)          # y^T s
+            ys = np.asarray(yk.T @ s).ravel()[0]         # y^T s
             if ys <= 1e-12:
                 D = D_prev               # skip update if curvature condition is not satisfied
             else:
                 Dy  = D_prev @ yk
-                yDy = float(yk.T @ Dy)
+                yDy = np.asarray(yk.T @ Dy).ravel()[0]
                 D = (D_prev
                     + (1.0 + yDy/ys) * (s @ s.T) / ys
                     - (Dy @ s.T + s @ Dy.T) / ys
